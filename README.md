@@ -4,13 +4,31 @@ Official release of code for "Oops I Took A Gradient: Scalable Sampling for Disc
 # Code for sampling experiments can be found in: 
 rbm_sample.py, ising_sample.py, fhmm_sample.py, potts_sample.py, svgd_sample.py
 
+
 # To generate training data for ising inference experiments run:
 
 ```
 ./generate_data.sh
 ```
 
-# To traing a binary EBM run:
+# Datasets for EBM training can be found at:
+https://github.com/jmtomczak/vae_vampprior/tree/master/datasets
+
+Download them and unzip as:
+
+    GWG_release/
+
+        datasets/
+            Caltech...
+            FreyFaces...
+            Histo...
+            MNIST_static/
+            Omniglot/
+        
+
+If you would like access to the protein data please contact me at wgrathwohl@gmail.com, they are quite large and don't fit here :(
+
+# To train a binary EBM run:
 
 ```
 python pcd_ebm_ema.py --save_dir $DIR} \
@@ -20,7 +38,7 @@ python pcd_ebm_ema.py --save_dir $DIR} \
     --eval_every 5000 --eval_sampling_steps 10000 &
 ```
 
-# To traing a categorical EBM run:
+# To train a categorical EBM run:
 
 ```
 python pcd_ebm_ema_cat.py --save_dir $DIR \
