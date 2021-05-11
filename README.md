@@ -13,6 +13,16 @@ rbm_sample.py, ising_sample.py, fhmm_sample.py, potts_sample.py, svgd_sample.py
 # Datasets for EBM training can be found at:
 https://github.com/jmtomczak/vae_vampprior/tree/master/datasets
 
+Download them and unzip as:
+
+GWG_release/
+    datasets/
+        Caltech...
+        FreyFaces...
+        Histo...
+        MNIST_static/
+        Omniglot/
+
 If you would like access to the protein data please contact me at wgrathwohl@gmail.com, they are quite large and don't fit here :(
 
 # To train a binary EBM run:
