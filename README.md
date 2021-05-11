@@ -13,7 +13,9 @@ rbm_sample.py, ising_sample.py, fhmm_sample.py, potts_sample.py, svgd_sample.py
 # Datasets for EBM training can be found at:
 https://github.com/jmtomczak/vae_vampprior/tree/master/datasets
 
-# To traing a binary EBM run:
+If you would like access to the protein data please contact me at wgrathwohl@gmail.com, they are quite large and don't fit here :(
+
+# To train a binary EBM run:
 
 ```
 python pcd_ebm_ema.py --save_dir $DIR} \
@@ -23,7 +25,7 @@ python pcd_ebm_ema.py --save_dir $DIR} \
     --eval_every 5000 --eval_sampling_steps 10000 &
 ```
 
-# To traing a categorical EBM run:
+# To train a categorical EBM run:
 
 ```
 python pcd_ebm_ema_cat.py --save_dir $DIR \
