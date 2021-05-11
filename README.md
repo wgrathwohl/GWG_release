@@ -10,6 +10,9 @@ rbm_sample.py, ising_sample.py, fhmm_sample.py, potts_sample.py, svgd_sample.py
 ./generate_data.sh
 ```
 
+# Datasets for EBM training can be found at:
+https://github.com/jmtomczak/vae_vampprior/tree/master/datasets
+
 # To traing a binary EBM run:
 
 ```
