@@ -1,5 +1,7 @@
 # GWG_release
-Official release of code for "Oops I Took A Gradient: Scalable Sampling for Discrete Distributions"
+Official release of code for ["Oops I Took A Gradient: Scalable Sampling for Discrete Distributions"](https://arxiv.org/abs/2102.04509) which has been accepted for a long presentation to ICML 2021. 
+
+The paper is by [me](http://www.cs.toronto.edu/~wgrathwohl/), Kevin Swersky, Milad Hashemi, [David Duvenaud](http://www.cs.toronto.edu/~duvenaud/), and [Chris Maddison](https://www.cs.toronto.edu/~cmaddis/)
 
 See Gibbs-With-Gradients sampling from an Ising model: ![](gwg.gif)
 
