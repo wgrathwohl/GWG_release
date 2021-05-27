@@ -194,8 +194,8 @@ def main(args):
             st = time.time()
             for k in range(args.sampling_steps):
                 x_fake_new = sampler.step(x_fake.detach(), model).detach()
-                #h = (x_fake_new != x_fake).float().view(x_fake_new.size(0), -1).sum(-1).mean().item()
-                #hops.append(h)
+                h = (x_fake_new != x_fake).float().view(x_fake_new.size(0), -1).sum(-1).mean().item()
+                hops.append(h)
                 x_fake = x_fake_new
             st = time.time() - st
             hop_dists.append(np.mean(hops))
