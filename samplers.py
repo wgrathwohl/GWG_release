@@ -27,7 +27,7 @@ class DiffSampler(nn.Module):
             self.diff_fn = lambda x, m: utils.difference_function(x, m) / self.temp
 
 
-    def step(self, x, model, mask):
+    def step(self, x, model):
 
         x_cur = x
         a_s = []
@@ -87,7 +87,7 @@ class DiffSampler(nn.Module):
                 self._ar = np.mean(a_s)
             else:
                 for i in range(self.n_steps):
-                    forward_delta = self.diff_fn(x_cur, model) - 1e9 * mask
+                    forward_delta = self.diff_fn(x_cur, model)
                     cd_forward = dists.OneHotCategorical(logits=forward_delta)
                     changes = cd_forward.sample()
 
@@ -95,7 +95,7 @@ class DiffSampler(nn.Module):
 
                     x_delta = (1. - x_cur) * changes + x_cur * (1. - changes)
 
-                    reverse_delta = self.diff_fn(x_delta, model) - 1e9 * mask
+                    reverse_delta = self.diff_fn(x_delta, model)
                     cd_reverse = dists.OneHotCategorical(logits=reverse_delta)
 
                     lp_reverse = cd_reverse.log_prob(changes)
