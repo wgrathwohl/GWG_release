@@ -60,7 +60,72 @@ def load_static_mnist(args, **kwargs):
     #     args.pseudoinputs_std = 0.01
 
     return train_loader, val_loader, test_loader, args
+# ======================================================================================================================
+def load_dynamic_mnist_cat(args, **kwargs):
+    # set args
+    args.input_size = [1, 28, 28]
+    args.input_type = 'cat'
+    args.dynamic_binarization = False
+    
+    # start processing
+    from torchvision import datasets, transforms
+    
+    # Define a transform to normalize the data
+    transform = transforms.Compose([transforms.ToTensor()])
 
+    # Download and load the training and test data
+    mnist_trainset = datasets.MNIST('~/.pytorch/MNIST_data/', train=True, download=True, transform=transform)
+    mnist_testset = datasets.MNIST('~/.pytorch/MNIST_data/', train=False, download=True, transform=transform)
+
+    # Filter the data for only digits 0 and 1
+    indices_train = ((mnist_trainset.targets == 0) | (mnist_trainset.targets == 1))
+    indices_test = ((mnist_testset.targets == 0) | (mnist_testset.targets == 1))
+
+    # Use these indices to create new subsets with only 0 and 1 digits
+    train_data = torch.utils.data.Subset(mnist_trainset, torch.where(indices_train)[0])
+    test_data = torch.utils.data.Subset(mnist_testset, torch.where(indices_test)[0])
+
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
+
+    # preparing data
+    x_train = train_data.dataset.data[indices_train].float().numpy()
+    x_train = np.reshape( x_train, (x_train.shape[0], x_train.shape[1] * x_train.shape[2] ) )
+    y_train = train_data.dataset.targets[indices_train].numpy()
+
+    x_test = test_data.dataset.data[indices_test].float().numpy()
+    x_test = np.reshape( x_test, (x_test.shape[0], x_test.shape[1] * x_test.shape[2] ) )
+    y_test = test_data.dataset.targets[indices_test].numpy()
+
+    # validation set
+#     x_val = x_train[10555:12665]
+#     y_val = np.array(y_train[10555:12665], dtype=int)
+#     x_train = x_train[0:10555]
+#     y_train = np.array(y_train[0:10555], dtype=int)
+    x_val = x_train[2000:3000]
+    y_val = np.array(y_train[2000:3000], dtype=int)
+    x_train = x_train[0:2000]
+    y_train = np.array(y_train[0:2000], dtype=int)
+    # binarize
+    if args.dynamic_binarization:
+        args.input_type = 'binary'
+        np.random.seed(777)
+        x_val = np.random.binomial(1, x_val)
+        x_test = np.random.binomial(1, x_test)
+    else:
+        args.input_type = 'cat'
+
+    # pytorch data loader
+    train = data_utils.TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train))
+    train_loader = data_utils.DataLoader(train, batch_size=args.batch_size, shuffle=True, **kwargs)
+
+    validation = data_utils.TensorDataset(torch.from_numpy(x_val).float(), torch.from_numpy(y_val))
+    val_loader = data_utils.DataLoader(validation, batch_size=args.test_batch_size, shuffle=False, **kwargs)
+
+    test = data_utils.TensorDataset(torch.from_numpy(x_test).float(), torch.from_numpy(y_test))
+    test_loader = data_utils.DataLoader(test, batch_size=args.test_batch_size, shuffle=False, **kwargs)
+
+    return train_loader, val_loader, test_loader, args
 # ======================================================================================================================
 def load_dynamic_mnist(args, **kwargs):
     # set args
@@ -401,6 +466,8 @@ def load_dataset(args, **kwargs):
         train_loader, val_loader, test_loader, args = load_freyfaces(args, **kwargs)
     elif args.dataset_name == 'cifar10':
         train_loader, val_loader, test_loader, args = load_cifar10(args, **kwargs)
+    elif args.dataset_name == 'cat':
+        train_loader, val_loader, test_loader, args = load_dynamic_mnist_cat(args, **kwargs)
     else:
         raise Exception('Wrong name of the dataset!')
 

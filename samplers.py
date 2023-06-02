@@ -285,7 +285,7 @@ class DiffSamplerMultiDim(nn.Module):
             # make sure we dont choose to stay where we are!
             forward_logits = forward_delta - 1e9 * x_cur
             #print(forward_logits)
-            cd_forward = dists.OneHotCategorical(logits=forward_logits.view(x_cur.size(0), -1))
+            cd_forward = dists.OneHotCategorical(logits=forward_logits.view(x_cur.size(0), -1), validate_args=False)
             changes = cd_forward.sample()
 
             # compute probability of sampling this change
@@ -299,11 +299,9 @@ class DiffSamplerMultiDim(nn.Module):
 
             reverse_delta = self.diff_fn(x_delta, model)
             reverse_logits = reverse_delta - 1e9 * x_delta
-            cd_reverse = dists.OneHotCategorical(logits=reverse_logits.view(x_delta.size(0), -1))
+            cd_reverse = dists.OneHotCategorical(logits=reverse_logits.view(x_delta.size(0), -1), validate_args=False)
             reverse_changes = x_cur * changed_ind[:, :, None]
-
             lp_reverse = cd_reverse.log_prob(reverse_changes.view(x_delta.size(0), -1))
-
             m_term = (model(x_delta).squeeze() - model(x_cur).squeeze())
             la = m_term + lp_reverse - lp_forward
             a = (la.exp() > torch.rand_like(la)).float()
