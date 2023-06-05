@@ -15,6 +15,7 @@ import copy
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
+
 def makedirs(dirname):
     """
     Make directory only if it's not already there.
@@ -88,8 +89,7 @@ class EBM(nn.Module):
 
         logp = self.net(x).squeeze()
         return logp + bd
-
-
+    
 def main(args):
     makedirs(args.save_dir)
     logger = open("{}/log.txt".format(args.save_dir), 'w')
@@ -108,7 +108,7 @@ def main(args):
         ar = torch.arange(x.size(-1)).to(x.device)
         x_int = (x * ar[None, None, :]).sum(-1)
         x_int = x_int.view(x.size(0), args.input_size[0], args.input_size[1], args.input_size[2])
-        torchvision.utils.save_image(x_int, p, normalize=True, nrow=int(x.size(0) ** .5))
+        torchvision.utils.save_image(tensor=x_int, fp=p, normalize=True, nrow=int(x.size(0) ** .5))
 
 #         print("####################################################################")
 #         print(max(x_int[0]))
@@ -236,12 +236,10 @@ def main(args):
                                                                                      logp_fake.mean().item(), obj.item(),
                                                                                      hop_dists[-1]))
             if itr % args.viz_every == 0:
-#                 plot("{}/data_{}.png".format(args.save_dir, itr), x.detach().cpu())
-#                 plot("{}/buffer_{}.png".format(args.save_dir, itr), x_fake)
-                plt.plot(x.detach().cpu())
-                plt.savefig("{}/data_{}.png".format(args.save_dir, itr))
-                plt.plot(x_fake)
-                plt.savefig("{}/buffer_{}.png".format(args.save_dir, itr))
+                print("#############PLOT#############")
+                print(x.detach().cpu().shape)
+                plot("output_img/data_{}.png".format(itr), x.detach().cpu())
+                plot("output_img/buffer_{}.png".format(itr), x_fake)
 
 
             if (itr + 1) % args.eval_every == 0:
