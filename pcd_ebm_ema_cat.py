@@ -12,8 +12,8 @@ device = torch.device('cuda:' + str(0) if torch.cuda.is_available() else 'cpu')
 import vamp_utils
 import ais
 import copy
+from mlp import MLPEBM_cat  # Assuming this is the module containing the EBM architecture
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 
 
 def makedirs(dirname):
@@ -38,9 +38,8 @@ def get_sampler(args):
             block_size, hamming_dist = [int(v) for v in args.sampler.split('-')[1:]]
             sampler = block_samplers.HammingBallSampler(data_dim, block_size, hamming_dist)
         elif args.sampler == "gwg":
-#             sampler = samplers.DiffSampler(data_dim, 1,
-#                                            fixed_proposal=False, approx=True, multi_hop=False, temp=2.)
-            sampler = samplers.MultiDiffSampler(data_dim, 1, approx=True, temp=2., n_samples=n_hops)
+            sampler = samplers.DiffSampler(data_dim, 1,
+                                           fixed_proposal=False, approx=True, multi_hop=False, temp=2.)
         elif args.sampler.startswith("gwg-"):
             n_hops = int(args.sampler.split('-')[1])
             sampler = samplers.MultiDiffSampler(data_dim, 1, approx=True, temp=2., n_samples=n_hops)
@@ -89,7 +88,8 @@ class EBM(nn.Module):
 
         logp = self.net(x).squeeze()
         return logp + bd
-    
+
+
 def main(args):
     makedirs(args.save_dir)
     logger = open("{}/log.txt".format(args.save_dir), 'w')
@@ -108,14 +108,10 @@ def main(args):
         ar = torch.arange(x.size(-1)).to(x.device)
         x_int = (x * ar[None, None, :]).sum(-1)
         x_int = x_int.view(x.size(0), args.input_size[0], args.input_size[1], args.input_size[2])
-        torchvision.utils.save_image(tensor=x_int, fp=p, normalize=True, nrow=int(x.size(0) ** .5))
+        torchvision.utils.save_image(x_int, p, normalize=True, nrow=int(x.size(0) ** .5))
 
-#         print("####################################################################")
-#         print(max(x_int[0]))
-#         print("####################################################################")
     def preprocess(data):
-        x_int = (data * 1).long()
-#         x_oh = torch.nn.functional.one_hot(x_int, 256).float()
+        x_int = (data * 255).long()
         x_oh = torch.nn.functional.one_hot(x_int, 256).float()
         return x_oh
 
@@ -139,12 +135,13 @@ def main(args):
 
     # get data mean and initialize buffer
     init_batch = []
-    for x, _ in tqdm(train_loader):
+    for x, _ in train_loader:
         init_batch.append(preprocess(x))
     init_batch = torch.cat(init_batch, 0)
     eps = 1e-2 / 256
     init_mean = init_batch.mean(0) + eps
     init_mean = init_mean / init_mean.sum(-1)[:, None]
+
     if args.buffer_init == "mean":
         init_dist = MyOneHotCategorical(init_mean)
         buffer = init_dist.sample((args.buffer_size,))
@@ -152,11 +149,15 @@ def main(args):
         raise ValueError("Invalid init")
 
     if args.base_dist:
-        model = EBM(net, init_mean)
+#         model = EBM(net, init_mean)
+        model = EBM(net)
     else:
         model = EBM(net)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
     ema_model = copy.deepcopy(model)
+
     if args.ckpt_path is not None:
         d = torch.load(args.ckpt_path)
         model.load_state_dict(d['model'])
@@ -183,6 +184,7 @@ def main(args):
     all_inds = list(range(args.buffer_size))
     lr = args.lr
     init_dist = MyOneHotCategorical(init_mean.to(device))
+    best_model = None
 
     while itr < args.n_iters:
         for x in tqdm(train_loader):
@@ -236,12 +238,10 @@ def main(args):
                                                                                      logp_fake.mean().item(), obj.item(),
                                                                                      hop_dists[-1]))
             if itr % args.viz_every == 0:
-                print("#############PLOT#############")
-                print(x.detach().cpu().shape)
+                print("#############PLOT BUFFER#############")
                 plot("output_img/data_{}.png".format(itr), x.detach().cpu())
                 plot("output_img/buffer_{}.png".format(itr), x_fake)
-
-
+                
             if (itr + 1) % args.eval_every == 0:
                 logZ, train_ll, val_ll, test_ll, ais_samples = ais.evaluate(ema_model, init_dist, sampler,
                                                                             train_loader, val_loader, test_loader,
@@ -269,12 +269,20 @@ def main(args):
                 if val_ll.item() > best_val_ll:
                     best_val_ll = val_ll.item()
                     my_print("Best valid likelihood")
-
-                torch.save(d, "{}/ckpt_{}.pt".format(args.save_dir, itr))
+                    best_model = copy.deepcopy(model)
 
                 model.to(device)
 
             itr += 1
+    best_model.to(device)
+    rand_img = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
+    rand_img = preprocess(rand_img)
+    for k in range(256):
+        rand_img = sampler.step(rand_img.detach(), best_model).detach()
+        if k % 20 == 0:
+            plot("output_img/gen_{}.png".format(k//20), rand_img.detach().cpu())
+            
+            
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -298,14 +306,14 @@ if __name__ == "__main__":
     parser.add_argument('--buffer_size', type=int, default=1000)
     parser.add_argument('--buffer_init', type=str, default='mean')
     # training
-    parser.add_argument('--n_iters', type=int, default=100000)
+    parser.add_argument('--n_iters', type=int, default=6000)
     parser.add_argument('--warmup_iters', type=int, default=-1)
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--test_batch_size', type=int, default=100)
     parser.add_argument('--print_every', type=int, default=100)
     parser.add_argument('--viz_every', type=int, default=1000)
-    parser.add_argument('--eval_every', type=int, default=1000)
+    parser.add_argument('--eval_every', type=int, default=1)  #1000)
     parser.add_argument('--lr', type=float, default=.001)
     parser.add_argument('--weight_decay', type=float, default=.0)
 
