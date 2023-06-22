@@ -63,8 +63,5 @@ class DiffSamplerMultiDim(nn.Module):
         self._pt = np.mean(prop_terms)
         self._hops = (x != x_cur).float().sum(-1).sum(-1).mean().item()
         return x_cur
-    
-    def generate(self, noise, model):
-        with torch.no_grad():
-            fake_images = self.step(noise, model)
-        return fake_images
+
+        

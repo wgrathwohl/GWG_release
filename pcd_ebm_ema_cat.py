@@ -26,34 +26,7 @@ def makedirs(dirname):
 
 def get_sampler(args):
     data_dim = np.prod(args.input_size)
-    if args.input_type == "binary":
-        if args.sampler == "gibbs":
-            sampler = samplers.PerDimGibbsSampler(data_dim, rand=False)
-        elif args.sampler == "rand_gibbs":
-            sampler = samplers.PerDimGibbsSampler(data_dim, rand=True)
-        elif args.sampler.startswith("bg-"):
-            block_size = int(args.sampler.split('-')[1])
-            sampler = block_samplers.BlockGibbsSampler(data_dim, block_size)
-        elif args.sampler.startswith("hb-"):
-            block_size, hamming_dist = [int(v) for v in args.sampler.split('-')[1:]]
-            sampler = block_samplers.HammingBallSampler(data_dim, block_size, hamming_dist)
-        elif args.sampler == "gwg":
-            sampler = samplers.DiffSampler(data_dim, 1,
-                                           fixed_proposal=False, approx=True, multi_hop=False, temp=2.)
-        elif args.sampler.startswith("gwg-"):
-            n_hops = int(args.sampler.split('-')[1])
-            sampler = samplers.MultiDiffSampler(data_dim, 1, approx=True, temp=2., n_samples=n_hops)
-        else:
-            raise ValueError("Invalid sampler...")
-    else:
-        if args.sampler == "gibbs":
-            sampler = samplers.PerDimMetropolisSampler(data_dim, int(args.n_out), rand=False)
-        elif args.sampler == "rand_gibbs":
-            sampler = samplers.PerDimMetropolisSampler(data_dim, int(args.n_out), rand=True)
-        elif args.sampler == "gwg":
-            sampler = samplers.DiffSamplerMultiDim(data_dim, 1, approx=True, temp=2.)
-        else:
-            raise ValueError("invalid sampler")
+    sampler = samplers.DiffSamplerMultiDim(data_dim, 1, approx=True, temp=2.)
     return sampler
 
 
@@ -185,6 +158,8 @@ def main(args):
     lr = args.lr
     init_dist = MyOneHotCategorical(init_mean.to(device))
     best_model = None
+    rand_img = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
+    rand_img = preprocess(rand_img)
 
     while itr < args.n_iters:
         for x in tqdm(train_loader):
@@ -241,6 +216,11 @@ def main(args):
                 print("#############PLOT BUFFER#############")
                 plot("output_img/data_{}.png".format(itr), x.detach().cpu())
                 plot("output_img/buffer_{}.png".format(itr), x_fake)
+                curr_model = model if best_model is None else best_model
+                for k in range(1000):
+                    rand_img = sampler.step(rand_img.detach(), curr_model).detach()
+                    if k % 200 == 0:
+                        plot("output_img/gen_{}.png".format(k//200), rand_img.detach().cpu())
                 
             if (itr + 1) % args.eval_every == 0:
                 logZ, train_ll, val_ll, test_ll, ais_samples = ais.evaluate(ema_model, init_dist, sampler,
@@ -274,14 +254,7 @@ def main(args):
                 model.to(device)
 
             itr += 1
-    best_model.to(device)
-    rand_img = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
-    rand_img = preprocess(rand_img)
-    for k in range(256):
-        rand_img = sampler.step(rand_img.detach(), best_model).detach()
-        if k % 20 == 0:
-            plot("output_img/gen_{}.png".format(k//20), rand_img.detach().cpu())
-            
+
             
 
 if __name__ == "__main__":
@@ -306,14 +279,14 @@ if __name__ == "__main__":
     parser.add_argument('--buffer_size', type=int, default=1000)
     parser.add_argument('--buffer_init', type=str, default='mean')
     # training
-    parser.add_argument('--n_iters', type=int, default=6000)
+    parser.add_argument('--n_iters', type=int, default=3000)
     parser.add_argument('--warmup_iters', type=int, default=-1)
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--test_batch_size', type=int, default=100)
     parser.add_argument('--print_every', type=int, default=100)
     parser.add_argument('--viz_every', type=int, default=1000)
-    parser.add_argument('--eval_every', type=int, default=1)  #1000)
+    parser.add_argument('--eval_every', type=int, default=1000)
     parser.add_argument('--lr', type=float, default=.001)
     parser.add_argument('--weight_decay', type=float, default=.0)
 
