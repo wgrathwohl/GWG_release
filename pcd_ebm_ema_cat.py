@@ -262,7 +262,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--save_dir', type=str, default="/tmp/test_discrete")
+    parser.add_argument('--save_dir', type=str, default="tmp/test_discrete")
     parser.add_argument('--dataset_name', type=str, default='cat', choices=["cat", "freyfaces", "histopathology"])
     parser.add_argument('--ckpt_path', type=str, default=None)
     # models
