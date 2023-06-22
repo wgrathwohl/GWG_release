@@ -160,6 +160,7 @@ def main(args):
     best_model = None
     rand_img = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
     rand_img = preprocess(rand_img)
+    num = 0
 
     while itr < args.n_iters:
         for x in tqdm(train_loader):
@@ -216,11 +217,12 @@ def main(args):
                 print("#############PLOT BUFFER#############")
                 plot("output_img/data_{}.png".format(itr), x.detach().cpu())
                 plot("output_img/buffer_{}.png".format(itr), x_fake)
-                curr_model = model if best_model is None else best_model
+                curr_model = model if best_model is None else best_model.to(device)
                 for k in range(1000):
                     rand_img = sampler.step(rand_img.detach(), curr_model).detach()
                     if k % 200 == 0:
-                        plot("output_img/gen_{}.png".format(k//200), rand_img.detach().cpu())
+                        plot("output_img/gen_{}.png".format(num), rand_img.detach().cpu())
+                        num += 1
                 
             if (itr + 1) % args.eval_every == 0:
                 logZ, train_ll, val_ll, test_ll, ais_samples = ais.evaluate(ema_model, init_dist, sampler,
@@ -279,7 +281,7 @@ if __name__ == "__main__":
     parser.add_argument('--buffer_size', type=int, default=1000)
     parser.add_argument('--buffer_init', type=str, default='mean')
     # training
-    parser.add_argument('--n_iters', type=int, default=3000)
+    parser.add_argument('--n_iters', type=int, default=20001)
     parser.add_argument('--warmup_iters', type=int, default=-1)
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=100)
