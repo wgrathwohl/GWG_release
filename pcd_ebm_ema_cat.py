@@ -294,4 +294,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.device = device
+    os.makedirs('output_img', exist_ok=True)
     main(args)
