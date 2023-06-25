@@ -30,10 +30,12 @@ class MLPEBM_cat(nn.Module):
         self.net = mlp_ebm(nin * n_proj, nint, nout=nout)
 
     def forward(self, x):
-        xr = x.view(x.size(0) * x.size(1), x.size(2))
-        xr_p = self.proj(xr)
-        x_p = xr_p.view(x.size(0), x.size(1), self.n_proj)
-        x_p = x_p.view(x.size(0), x.size(1) * self.n_proj)
+        # xr = x.view(x.size(0) * x.size(1), x.size(2))
+        # xr_p = self.proj(xr)
+        xr_p = self.proj(x)
+        # x_p = xr_p.view(x.size(0), x.size(1), self.n_proj)
+        # x_p = x_p.view(x.size(0), x.size(1) * self.n_proj)
+        x_p = xr_p.view(x.size(0), x.size(1) * self.n_proj)
         return self.net(x_p)
 
 

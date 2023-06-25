@@ -6,7 +6,7 @@ import numpy as np
 
 # Gibbs-With-Gradients for categorical data
 class DiffSamplerMultiDim(nn.Module):
-    def __init__(self, dim, n_steps=10, approx=False, temp=1.):
+    def __init__(self, dim, n_steps=10, approx=False, temp=0.2):
         super().__init__()
         self.dim = dim
         self.n_steps = n_steps

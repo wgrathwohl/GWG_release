@@ -122,10 +122,9 @@ def main(args):
         raise ValueError("Invalid init")
 
     if args.base_dist:
-#         model = EBM(net, init_mean)
-        model = EBM(net)
+        model = EBM(net, init_mean)
     else:
-        model = EBM(net)
+        model = EBM(net, init_mean)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -157,10 +156,9 @@ def main(args):
     all_inds = list(range(args.buffer_size))
     lr = args.lr
     init_dist = MyOneHotCategorical(init_mean.to(device))
-    best_model = None
     rand_img = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
     rand_img = preprocess(rand_img)
-    num = 0
+    i = 0
 
     while itr < args.n_iters:
         for x in tqdm(train_loader):
@@ -204,6 +202,9 @@ def main(args):
             loss.backward()
             optimizer.step()
 
+            for k in range(10):
+                rand_img = sampler.step(rand_img.detach(), model).detach()  
+
             # update ema_model
             for p, ema_p in zip(model.parameters(), ema_model.parameters()):
                 ema_p.data = ema_p.data * args.ema + p.data * (1. - args.ema)
@@ -213,16 +214,13 @@ def main(args):
                          "log p(fake) = {:.4f}, diff = {:.4f}, hops = {:.4f}".format(itr, lr, logp_real.mean().item(),
                                                                                      logp_fake.mean().item(), obj.item(),
                                                                                      hop_dists[-1]))
+
             if itr % args.viz_every == 0:
                 print("#############PLOT BUFFER#############")
                 plot("output_img/data_{}.png".format(itr), x.detach().cpu())
                 plot("output_img/buffer_{}.png".format(itr), x_fake)
-                curr_model = model if best_model is None else best_model.to(device)
-                for k in range(1000):
-                    rand_img = sampler.step(rand_img.detach(), curr_model).detach()
-                    if k % 200 == 0:
-                        plot("output_img/gen_{}.png".format(num), rand_img.detach().cpu())
-                        num += 1
+                plot("output_img/gen_{}.png".format(i), rand_img.detach().cpu())
+                i += 1
                 
             if (itr + 1) % args.eval_every == 0:
                 logZ, train_ll, val_ll, test_ll, ais_samples = ais.evaluate(ema_model, init_dist, sampler,
@@ -251,12 +249,10 @@ def main(args):
                 if val_ll.item() > best_val_ll:
                     best_val_ll = val_ll.item()
                     my_print("Best valid likelihood")
-                    best_model = copy.deepcopy(model)
 
                 model.to(device)
 
             itr += 1
-
             
 
 if __name__ == "__main__":
@@ -281,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument('--buffer_size', type=int, default=1000)
     parser.add_argument('--buffer_init', type=str, default='mean')
     # training
-    parser.add_argument('--n_iters', type=int, default=20001)
+    parser.add_argument('--n_iters', type=int, default=3001)
     parser.add_argument('--warmup_iters', type=int, default=-1)
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=100)
