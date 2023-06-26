@@ -63,5 +63,3 @@ class DiffSamplerMultiDim(nn.Module):
         self._pt = np.mean(prop_terms)
         self._hops = (x != x_cur).float().sum(-1).sum(-1).mean().item()
         return x_cur
-
-        

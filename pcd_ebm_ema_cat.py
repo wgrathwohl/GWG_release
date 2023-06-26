@@ -155,11 +155,13 @@ def main(args):
     hop_dists = []
     all_inds = list(range(args.buffer_size))
     lr = args.lr
+    best_model = None
     init_dist = MyOneHotCategorical(init_mean.to(device))
-    rand_img = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
-    rand_img = preprocess(rand_img)
-    i = 0
-
+    rand_img1 = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
+    rand_img1 = preprocess(rand_img1)
+    rand_img2 = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
+    rand_img2 = preprocess(rand_img2)
+    model_ckpt = []
     while itr < args.n_iters:
         for x in tqdm(train_loader):
             if itr < args.warmup_iters:
@@ -201,9 +203,8 @@ def main(args):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
-            for k in range(10):
-                rand_img = sampler.step(rand_img.detach(), model).detach()  
+            to_add = copy.deepcopy(model)
+            model_ckpt += [to_add]
 
             # update ema_model
             for p, ema_p in zip(model.parameters(), ema_model.parameters()):
@@ -219,8 +220,6 @@ def main(args):
                 print("#############PLOT BUFFER#############")
                 plot("output_img/data_{}.png".format(itr), x.detach().cpu())
                 plot("output_img/buffer_{}.png".format(itr), x_fake)
-                plot("output_img/gen_{}.png".format(i), rand_img.detach().cpu())
-                i += 1
                 
             if (itr + 1) % args.eval_every == 0:
                 logZ, train_ll, val_ll, test_ll, ais_samples = ais.evaluate(ema_model, init_dist, sampler,
@@ -240,6 +239,7 @@ def main(args):
                     plot("{}/EMA_sample_{}_{}.png".format(args.save_dir, itr, _i), _x)
 
                 model.cpu()
+
                 d = {}
                 d['model'] = model.state_dict()
                 d['ema_model'] = ema_model.state_dict()
@@ -249,11 +249,19 @@ def main(args):
                 if val_ll.item() > best_val_ll:
                     best_val_ll = val_ll.item()
                     my_print("Best valid likelihood")
-
                 model.to(device)
 
             itr += 1
-            
+    i = 0
+    for m in model_ckpt:
+        for k in range(10):
+            rand_img1 = sampler.step(rand_img1.detach(), m).detach()  
+            rand_img2 = sampler.step(rand_img2.detach(), m).detach() 
+        if i % 100 == 0:
+            plot("output_img/gen_{}.png".format(i), rand_img1.detach().cpu())
+            plot("output_img/gengen_{}.png".format(i), rand_img2.detach().cpu())
+        i += 1
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

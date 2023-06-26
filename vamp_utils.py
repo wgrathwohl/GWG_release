@@ -45,10 +45,6 @@ def load_dynamic_mnist_cat(args, **kwargs):
     y_test = test_data.dataset.targets[indices_test].numpy()
 
     # validation set
-    # x_val = x_train[10555:12665]
-    # y_val = np.array(y_train[10555:12665], dtype=int)
-    # x_train = x_train[0:10555]
-    # y_train = np.array(y_train[0:10555], dtype=int)
     x_val = x_train[5000:6000]
     y_val = np.array(y_train[5000:6000], dtype=int)
     x_train = x_train[0:5000]
