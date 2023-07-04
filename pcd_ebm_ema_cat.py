@@ -8,10 +8,11 @@ import block_samplers
 import torch.nn as nn
 import os
 import torchvision
-device = torch.device('cuda:' + str(0) if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:' + str(1) if torch.cuda.is_available() else 'cpu')
 import vamp_utils
 import ais
 import copy
+import pickle
 from mlp import MLPEBM_cat  # Assuming this is the module containing the EBM architecture
 from tqdm import tqdm
 
@@ -157,10 +158,6 @@ def main(args):
     lr = args.lr
     best_model = None
     init_dist = MyOneHotCategorical(init_mean.to(device))
-    rand_img1 = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
-    rand_img1 = preprocess(rand_img1)
-    rand_img2 = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
-    rand_img2 = preprocess(rand_img2)
     model_ckpt = []
     while itr < args.n_iters:
         for x in tqdm(train_loader):
@@ -215,6 +212,13 @@ def main(args):
                          "log p(fake) = {:.4f}, diff = {:.4f}, hops = {:.4f}".format(itr, lr, logp_real.mean().item(),
                                                                                      logp_fake.mean().item(), obj.item(),
                                                                                      hop_dists[-1]))
+            if itr == 3000:
+                noise = torch.randint(low=0, high=256, size=(100,) + (784,)).to(device) / 255.
+                noise = preprocess(noise)
+
+                for k in range(1_000_000):
+                    noise = sampler.step(noise.detach(), model).detach()  
+                plot(f"output_img/gen_{itr}.png", noise.detach().cpu())
 
             if itr % args.viz_every == 0:
                 print("#############PLOT BUFFER#############")
@@ -252,15 +256,16 @@ def main(args):
                 model.to(device)
 
             itr += 1
-    i = 0
-    for m in model_ckpt:
-        for k in range(10):
-            rand_img1 = sampler.step(rand_img1.detach(), m).detach()  
-            rand_img2 = sampler.step(rand_img2.detach(), m).detach() 
-        if i % 100 == 0:
-            plot("output_img/gen_{}.png".format(i), rand_img1.detach().cpu())
-            plot("output_img/gengen_{}.png".format(i), rand_img2.detach().cpu())
-        i += 1
+    # i = 0
+    # for m in model_ckpt[0:1000]:
+    #     for k in range(100):
+    #         rand_img1 = sampler.step(rand_img1.detach(), m).detach()  
+    #         rand_img2 = sampler.step(rand_img2.detach(), m).detach() 
+    #         i += 1
+    #     if i % 10000 == 0:
+    #         plot("output_img/gen_{}.png".format(i), rand_img1.detach().cpu())
+    #         plot("output_img/gengen_{}.png".format(i), rand_img2.detach().cpu())
+        # i += 1
     
 
 if __name__ == "__main__":
